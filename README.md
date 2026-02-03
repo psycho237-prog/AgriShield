@@ -61,11 +61,8 @@ The module comes pre-loaded with optimized thresholds for the following categori
 ## 🚀 Getting Started
 
 ### 1. Firmware Installation
-Using PlatformIO:
-```bash
-cd firmware
-pio run --target upload
-```
+- **PlatformIO**: `cd AgriShield_Firmware && pio run --target upload`
+- **Arduino IDE**: Follow the [Arduino Setup Guide](AgriShield_Firmware/README_ARDUINO.md).
 
 ### 2. Connect to Module
 - **SSID**: `AgriShield-AP`
