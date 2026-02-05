@@ -16,7 +16,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
 
   final List<Map<String, dynamic>> _cropProfiles = [
     {
-      'id': 'MAIZE',
+      'id': 'MAIZE_CORN',
       'name_en': 'Maize',
       'name_fr': 'Maïs',
       'icon': Icons.grain_outlined,
@@ -36,7 +36,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
       'desc_fr': 'Maintient une humidité élevée du sol pour les jeunes plants.',
     },
     {
-      'id': 'TOMATO',
+      'id': 'TOMATO_OPEN_FIELD',
       'name_en': 'Tomato',
       'name_fr': 'Tomate',
       'icon': Icons.agriculture_outlined,
@@ -54,9 +54,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
     });
 
     final success = await _apiService.updateConfig({
-      'crop_id': profile['id'],
-      'min_soil_moisture': profile['minMoisture'],
-      'max_air_temp': profile['maxTemp'],
+      'crop_profile_id': profile['id'],
+      'alert_thresholds': {
+        'soil_moisture_min': profile['minMoisture'],
+        'temperature_max': profile['maxTemp'],
+      }
     });
 
     setState(() => _isUpdating = false);

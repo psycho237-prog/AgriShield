@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import 'package:intl/intl.dart';
 
 class LogsScreen extends StatefulWidget {
@@ -23,9 +24,9 @@ class _LogsScreenState extends State<LogsScreen> {
   Future<void> _loadLogs() async {
     setState(() => _isLoading = true);
     final data = await _apiService.fetchLog();
-    if (data != null && data['logs'] != null) {
+    if (data != null && data['records'] != null) {
       setState(() {
-        _logs = List.from(data['logs']).reversed.toList(); // Newest first
+        _logs = List.from(data['records']).reversed.toList(); // Newest first
         _isLoading = false;
       });
     } else {
@@ -42,8 +43,7 @@ class _LogsScreenState extends State<LogsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historique des Données'),
-        backgroundColor: Colors.green[800],
+        title: Text(AppStrings.get('nav_logs')),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -60,7 +60,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     children: [
                       Icon(Icons.history_toggle_off, size: 64, color: Colors.grey),
                       SizedBox(height: 16),
-                      Text('Aucun log disponible', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      Text('No logs available', style: TextStyle(fontSize: 18, color: Colors.grey)),
                     ],
                   ),
                 )
@@ -70,7 +70,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final log = _logs[index];
-                    final level = log['alert'] ?? 'GREEN';
+                    final level = log['alert_level'] ?? 'GREEN';
                     
                     return Container(
                       padding: const EdgeInsets.all(16),
@@ -92,7 +92,7 @@ class _LogsScreenState extends State<LogsScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                _formatTimestamp(log['ts'] ?? 0),
+                                _formatTimestamp((log['timestamp'] ?? 0) ~/ 1000), // convert ms to s if needed or vice versa
                                 style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
                               ),
                               _buildStatusIndicator(level),
@@ -102,10 +102,10 @@ class _LogsScreenState extends State<LogsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildLogDetail(Icons.thermostat, '${log['t'] ?? '--'}°C', Colors.orange),
-                              _buildLogDetail(Icons.water_drop, '${log['h'] ?? '--'}%', Colors.blue),
-                              _buildLogDetail(Icons.grass, '${log['sm'] ?? '--'}%', Colors.brown),
-                              _buildLogDetail(Icons.battery_std, '${log['b'] ?? '--'}%', Colors.green),
+                              _buildLogDetail(Icons.thermostat_outlined, '${log['temperature_air'] ?? '--'}°C', Colors.orange),
+                              _buildLogDetail(Icons.water_drop_outlined, '${log['humidity_air'] ?? '--'}%', Colors.blue),
+                              _buildLogDetail(Icons.grass_outlined, '${log['soil_moisture'] ?? '--'}%', Colors.brown),
+                              _buildLogDetail(Icons.battery_std_outlined, '${log['battery_percent'] ?? '--'}%', Colors.green),
                             ],
                           ),
                         ],
