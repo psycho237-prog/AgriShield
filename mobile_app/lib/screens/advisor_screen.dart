@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../services/localization_service.dart';
 
 class AdvisorScreen extends StatelessWidget {
   final Map<String, dynamic>? currentData;
@@ -17,45 +19,27 @@ class AdvisorScreen extends StatelessWidget {
     // Irrigation Logic
     if (moisture < 30) {
       suggestions.add({
-        'title': 'Irrigation Urgente',
-        'desc': 'L\'humidité du sol est critique ($moisture%). Arrosez immédiatement pour éviter le flétrissement.',
-        'icon': Icons.water_drop,
+        'title': AppStrings.currentLang == 'en' ? 'Urgent Irrigation' : 'Irrigation Urgente',
+        'desc': AppStrings.currentLang == 'en' ? 'Soil moisture is critical. Water immediately.' : 'L\'humidité du sol est critique. Arrosez immédiatement.',
+        'icon': Icons.water_drop_outlined,
         'color': Colors.red,
       });
-    } else if (moisture < 50) {
-      suggestions.add({
-        'title': 'Planifier Arrosage',
-        'desc': 'Le sol commence à s\'assécher. Un arrosage léger en fin de journée serait bénéfique.',
-        'icon': Icons.opacity,
-        'color': Colors.orange,
-      });
     }
 
-    // Heat Stress
     if (temp > 32) {
       suggestions.add({
-        'title': 'Stress Thermique',
-        'desc': 'Température élevée ($temp°C). Si possible, activez l\'ombrage ou augmentez l\'humidité ambiante.',
-        'icon': Icons.wb_sunny,
+        'title': AppStrings.currentLang == 'en' ? 'Heat Stress' : 'Stress Thermique',
+        'desc': AppStrings.currentLang == 'en' ? 'High temperature detected. Provide shade.' : 'Température élevée détectée. Prévoyez de l\'ombre.',
+        'icon': Icons.wb_sunny_outlined,
         'color': Colors.orange,
-      });
-    }
-
-    // Disease Risk (High Humidity + Warm Temp)
-    if (humidity > 85 && temp > 25) {
-      suggestions.add({
-        'title': 'Risque de Mildiou',
-        'desc': 'Humidité élevée et chaleur favorisent les champignons. Surveillez l\'apparition de taches sur les feuilles.',
-        'icon': Icons.bug_report,
-        'color': Colors.purple,
       });
     }
 
     if (suggestions.isEmpty) {
       suggestions.add({
-        'title': 'Conditions Optimales',
-        'desc': 'Tous les indicateurs sont au vert. Vos plantes s\'épanouissent dans ces conditions.',
-        'icon': Icons.check_circle,
+        'title': AppStrings.currentLang == 'en' ? 'Optimal Conditions' : 'Conditions Optimales',
+        'desc': AppStrings.currentLang == 'en' ? 'All metrics are within target range.' : 'Toutes les métriques sont dans la plage cible.',
+        'icon': Icons.check_circle_outline,
         'color': Colors.green,
       });
     }
@@ -68,15 +52,15 @@ class AdvisorScreen extends StatelessWidget {
     final suggestions = _generateSuggestions();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Conseiller Agricole AI')),
+      appBar: AppBar(title: Text(AppStrings.get('nav_advisor'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Analyses et Suggestions', 
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(AppStrings.get('suggestions_title'), 
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Basé sur les données récoltées par votre module AgriShield.',
-            style: TextStyle(color: Colors.grey)),
+          Text(AppStrings.get('suggestions_desc'),
+            style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 24),
           ...suggestions.map((s) => _buildSuggestionCard(s)).toList(),
           const SizedBox(height: 24),
@@ -89,14 +73,18 @@ class AdvisorScreen extends StatelessWidget {
   Widget _buildSuggestionCard(Map<String, dynamic> s) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: Icon(s['icon'], color: s['color'], size: 40),
-        title: Text(s['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: Icon(s['icon'], color: s['color'], size: 36),
+        title: Text(s['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8.0),
-          child: Text(s['desc']),
+          child: Text(s['desc'], style: const TextStyle(fontSize: 14)),
         ),
       ),
     );
@@ -104,28 +92,28 @@ class AdvisorScreen extends StatelessWidget {
 
   Widget _buildWeatherPreview() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.blue[700]!, Colors.blue[400]!]),
+        color: Colors.blue[800],
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Prévisions Météo', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              Icon(Icons.cloud, color: Colors.white),
+              Text(AppStrings.get('weather_title'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Icon(Icons.cloud_outlined, color: Colors.white),
             ],
           ),
-          SizedBox(height: 16),
-          Row(
+          const SizedBox(height: 24),
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _WeatherDay(day: 'Demain', icon: Icons.wb_cloudy, temp: '28°C'),
-              _WeatherDay(day: 'Ven', icon: Icons.beach_access, temp: '24°C'),
-              _WeatherDay(day: 'Sam', icon: Icons.wb_sunny, temp: '31°C'),
+              _WeatherDay(day: 'Tomorrow', icon: Icons.cloud_outlined, temp: '28°C'),
+              _WeatherDay(day: 'Fri', icon: Icons.beach_access_outlined, temp: '24°C'),
+              _WeatherDay(day: 'Sat', icon: Icons.wb_sunny_outlined, temp: '31°C'),
             ],
           )
         ],
@@ -145,9 +133,9 @@ class _WeatherDay extends StatelessWidget {
     return Column(
       children: [
         Text(day, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        const SizedBox(height: 8),
-        Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        Icon(icon, color: Colors.white, size: 28),
+        const SizedBox(height: 12),
         Text(temp, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ],
     );

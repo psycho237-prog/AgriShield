@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/sensor_data.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
 import '../widgets/sensor_card.dart';
 import 'advisor_screen.dart';
 import 'config_screen.dart';
 import 'logs_screen.dart';
+import 'stats_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,7 +22,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   SensorData? _currentData;
   bool _isLoading = true;
   bool _isOnline = false;
-  DateTime? _lastFetchTime;
 
   @override
   void initState() {
@@ -41,7 +42,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _currentData = SensorData.fromJson(json.decode(cachedJson));
           _isLoading = false;
-          // Note: _isOnline stays false until a fresh fetch succeeds
         });
       }
     } catch (e) {
@@ -59,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refreshData() async {
-    setState(() => _isLoading = _currentData == null); // Only show spinner if no data at all
+    setState(() => _isLoading = _currentData == null);
     
     final health = await _apiService.checkHealth();
     if (health) {
@@ -69,7 +69,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _currentData = data;
           _isOnline = true;
           _isLoading = false;
-          _lastFetchTime = DateTime.now();
         });
         await _saveToCache(data);
       }
@@ -78,7 +77,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isOnline = false;
         _isLoading = false;
       });
-      // We keep _currentData (the cached version)
     }
   }
 
@@ -100,27 +98,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
-              expandedHeight: 200.0,
+              expandedHeight: 220.0,
               floating: false,
               pinned: true,
               backgroundColor: Colors.green[800],
               flexibleSpace: FlexibleSpaceBar(
-                title: const Text('AgriShield Dashboard', 
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [Colors.green[900]!, Colors.green[700]!],
+                title: Text(AppStrings.get('app_title'), 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          colors: [Colors.green[900]!, Colors.green[700]!],
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Center(
-                    child: Opacity(
-                      opacity: 0.2,
-                      child: Icon(Icons.agriculture, size: 120, color: Colors.white),
+                    Positioned(
+                      right: -20,
+                      bottom: -20,
+                      child: Opacity(
+                        opacity: 0.1,
+                        child: Icon(Icons.agriculture_outlined, size: 200, color: Colors.white),
+                      ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, bottom: 60),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('AgriShield v1.0', style: TextStyle(color: Colors.white, fontSize: 14)),
+                          Text('Professional Monitoring', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        ],
+                      ),
+                    )
+                  ],
                 ),
               ),
               actions: [
@@ -135,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ? const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()))
                 : (_currentData != null)
                   ? _buildMainDashboard()
-                  : _buildOfflineView(), // Only show strictly offline view if NO cache exists
+                  : _buildOfflineView(),
             ),
           ],
         ),
@@ -151,16 +167,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Icon(Icons.sensors_off_rounded, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 24),
-          const Text('Première Connexion Requise', 
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(AppStrings.get('sync_required'), 
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Connectez-vous au Wi-Fi AgriShield pour synchroniser les données initiales.', 
-            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+          Text(AppStrings.get('sync_desc'), 
+            textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _refreshData, 
             icon: const Icon(Icons.sync),
-            label: const Text('Tenter la synchronisation'),
+            label: Text(AppStrings.get('btn_retry')),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -182,14 +198,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _buildAlertSection(),
               const SizedBox(height: 24),
-              const SectionHeader(title: 'Environnement Actuel', icon: Icons.eco),
+              _SectionHeader(title: AppStrings.get('stats_last_24h'), icon: Icons.analytics_outlined),
               const SizedBox(height: 12),
               _buildSensorGrid(),
               const SizedBox(height: 24),
-              const SectionHeader(title: 'État de l\'Énergie', icon: Icons.bolt),
+              _SectionHeader(title: AppStrings.get('battery'), icon: Icons.power_outlined),
               const SizedBox(height: 12),
               _buildPowerCard(),
-              const SizedBox(height: 80), // Bottom padding
+              const SizedBox(height: 80),
             ],
           ),
         ),
@@ -200,22 +216,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildOfflineBanner() {
     return Container(
       width: double.infinity,
-      color: Colors.amber[100],
+      color: Colors.amber[50],
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
         children: [
-          Icon(Icons.cloud_off, size: 16, color: Colors.amber[900]),
+          Icon(Icons.wifi_off, size: 16, color: Colors.amber[900]),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Mode Hors Ligne : Affichage des données enregistrées',
+              AppStrings.get('offline_mode'),
               style: TextStyle(color: Colors.amber[900], fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
           TextButton(
             onPressed: _refreshData,
-            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-            child: const Text('Actualiser', style: TextStyle(fontSize: 12)),
+            child: Text(AppStrings.get('btn_refresh'), style: const TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -228,41 +243,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: alertColor.withOpacity(0.08),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: alertColor.withOpacity(0.3), width: 2),
+        border: Border.all(color: alertColor.withOpacity(0.5), width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: alertColor, shape: BoxShape.circle),
-                child: const Icon(Icons.shield, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Niveau de Risque : ${_currentData?.alertLevel}',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: alertColor)),
-                    const Text('Système de Protection AgriShield', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: alertColor.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(Icons.shield_outlined, color: alertColor, size: 24),
           ),
-          if (_currentData?.alertReason.isNotEmpty ?? false)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(
-                _currentData!.alertReason,
-                style: const TextStyle(height: 1.4, fontSize: 14),
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${AppStrings.get('risk_level')}: ${_currentData?.alertLevel}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: alertColor)),
+                Text(_currentData?.alertReason ?? AppStrings.get('status_normal'), 
+                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -278,26 +282,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       mainAxisSpacing: 16,
       children: [
         SensorCard(
-          icon: Icons.thermostat,
-          label: 'Temp. Air',
+          icon: Icons.thermostat_outlined,
+          label: AppStrings.get('air_temp'),
           value: '${_currentData?.temperatureAir.toStringAsFixed(1)}°C',
           color: Colors.orange,
         ),
         SensorCard(
-          icon: Icons.water_drop,
-          label: 'Humidité Air',
+          icon: Icons.water_outlined,
+          label: AppStrings.get('air_hum'),
           value: '${_currentData?.humidityAir.toStringAsFixed(0)}%',
           color: Colors.blue,
         ),
         SensorCard(
-          icon: Icons.grass,
-          label: 'Humidité Sol',
+          icon: Icons.grass_outlined,
+          label: AppStrings.get('soil_moist'),
           value: '${_currentData?.soilMoisture}%',
           color: Colors.brown[400]!,
         ),
         SensorCard(
-          icon: Icons.sensors,
-          label: 'Temp. Sol',
+          icon: Icons.sensors_outlined,
+          label: AppStrings.get('soil_temp'),
           value: '${_currentData?.soilTemperature.toStringAsFixed(1)}°C',
           color: Colors.deepOrange[300]!,
         ),
@@ -321,17 +325,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  width: 60,
-                  height: 60,
+                  width: 50,
+                  height: 50,
                   child: CircularProgressIndicator(
                     value: (_currentData?.batteryPercent ?? 0) / 100,
-                    strokeWidth: 6,
+                    strokeWidth: 5,
                     backgroundColor: Colors.grey[100],
                     color: (_currentData?.batteryPercent ?? 0) < 20 ? Colors.red : Colors.green[400],
                   ),
                 ),
                 Text('${_currentData?.batteryPercent}%', 
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               ],
             ),
             const SizedBox(width: 20),
@@ -339,22 +343,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Batterie : ${_currentData?.batteryVoltage.toStringAsFixed(2)}V',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('${AppStrings.get('battery')}: ${_currentData?.batteryVoltage.toStringAsFixed(2)}V',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                   Text(
-                    _currentData?.solarCharging ?? false ? '⚡ Recharge Solaire Active' : 'Utilisation de la batterie',
+                    _currentData?.solarCharging ?? false ? AppStrings.get('solar_charging') : AppStrings.get('on_battery'),
                     style: TextStyle(
                       color: _currentData?.solarCharging ?? false ? Colors.amber[800] : Colors.grey[600],
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
             Icon(
-              _currentData?.solarCharging ?? false ? Icons.wb_sunny : Icons.battery_std,
+              _currentData?.solarCharging ?? false ? Icons.wb_sunny_outlined : Icons.battery_std_outlined,
               color: Colors.amber[800],
-              size: 30,
+              size: 24,
             ),
           ],
         ),
@@ -366,51 +370,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Drawer(
       child: Column(
         children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: Colors.green[800]),
-            accountName: const Text('AgriShield v1.0', style: TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: const Text('Protection Intelligente de Plantation'),
-            currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.agriculture, size: 40, color: Colors.green),
-            ),
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Colors.green),
+            child: Center(child: Icon(Icons.agriculture_outlined, size: 80, color: Colors.white)),
           ),
           ListTile(
-            leading: const Icon(Icons.dashboard_rounded),
-            title: const Text('Tableau de Bord'),
+            leading: const Icon(Icons.dashboard_outlined),
+            title: Text(AppStrings.get('nav_dashboard')),
             onTap: () => Navigator.pop(context),
           ),
           ListTile(
-            leading: const Icon(Icons.psychology_rounded),
-            title: const Text('Conseiller Agricole'),
-            subtitle: const Text('Analyses & Météo'),
+            leading: const Icon(Icons.psychology_outlined),
+            title: Text(AppStrings.get('nav_advisor')),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (context) => AdvisorScreen(currentData: _currentData?.toJson())));
             },
           ),
           ListTile(
-            leading: const Icon(Icons.settings_suggest_rounded),
-            title: const Text('Configuration Cultures'),
-            subtitle: const Text('Sélectionner Maize, Cacao...'),
+            leading: const Icon(Icons.analytics_outlined),
+            title: Text(AppStrings.get('nav_stats')),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const StatsScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: Text(AppStrings.get('nav_config')),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfigScreen()));
             },
           ),
           ListTile(
-            leading: const Icon(Icons.history_edu_rounded),
-            title: const Text('Journal Historique'),
+            leading: const Icon(Icons.history_outlined),
+            title: Text(AppStrings.get('nav_logs')),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (context) => const LogsScreen()));
             },
           ),
           const Divider(),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text('AgriShield © 2026', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+          ListTile(
+            leading: const Icon(Icons.language_outlined),
+            title: Text(AppStrings.get('nav_lang')),
+            onTap: () {
+              setState(() {
+                AppStrings.toggleLang();
+              });
+              Navigator.pop(context);
+            },
           ),
         ],
       ),
@@ -418,10 +428,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class SectionHeader extends StatelessWidget {
+class _SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
-  const SectionHeader({super.key, required this.title, required this.icon});
+  const _SectionHeader({required this.title, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -433,6 +443,4 @@ class SectionHeader extends StatelessWidget {
       ],
     );
   }
-}
-
 }
